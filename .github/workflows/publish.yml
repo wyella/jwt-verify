@@ -25,17 +25,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Node 24 bundles npm 11 — satisfies trap 3 (OIDC requires npm >=
+      # 11.5.1) without an npm self-upgrade step. Node 22's npm 10 → 11
+      # self-upgrade is broken mid-reify (MODULE_NOT_FOUND promise-retry)
+      # regardless of whether we pin @11 or use @latest; dodging it by
+      # picking a Node that already ships npm 11.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-
-      # Part 11 trap 3: OIDC publish requires npm >= 11.5.1. Node 22
-      # ships npm 10.x. Pin to npm@11 rather than @latest to avoid the
-      # self-upgrade bug that hit DEC-914a's first attempt (MODULE_NOT_FOUND
-      # promise-retry mid-reify). The pinned install is a clean replace.
-      - name: Upgrade npm to 11.x (OIDC requirement)
-        run: npm install -g npm@11
 
       - run: npm --version
 
