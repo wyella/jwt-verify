@@ -30,6 +30,16 @@ export interface MiddlewareOptions extends VerifyOptions {
   capability: string | null;        // null = tile-universal (LNG Twin)
   loginUrl?: string;                // default https://wyella.ca/login
   forbiddenUrl?: string;            // default https://wyella.ca/platform
+  /**
+   * Pass your Next.js app's `basePath` (e.g. `/opil`, `/lng-twin`).
+   * Next.js strips `basePath` from `req.nextUrl.pathname` before
+   * middleware runs, so without this option the `callbackUrl` on the
+   * login redirect omits the prefix and the post-login bounce 404s.
+   * Leave undefined for apps served at the root.
+   *
+   * Pair with `matcher: ['/', '/((?!...).*)']` so the basePath root
+   * is also protected — the lookahead alone does not match `/`.
+   */
   basePath?: string;
 }
 

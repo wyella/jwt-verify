@@ -1,6 +1,6 @@
 {
   "name": "@wyella/jwt-verify",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "NextAuth v4 JWE decode + Next.js Edge middleware for the Wyella platform (OPE-168 JWT shape v2).",
   "keywords": ["jwt", "jwe", "next-auth", "nextjs", "middleware", "edge", "wyella"],
   "license": "Apache-2.0",

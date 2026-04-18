@@ -18,13 +18,24 @@ import { createJwtMiddleware } from '@wyella/jwt-verify/middleware';
 
 export default createJwtMiddleware({
   secret: process.env.NEXTAUTH_SECRET!,
-  capability: 'opil', // or null for tile-universal apps (LNG Twin)
+  capability: 'opil',   // or null for tile-universal apps (LNG Twin)
+  basePath: '/opil',    // REQUIRED if your Next.js app has a non-root basePath
 });
 
 export const config = {
-  matcher: ['/((?!api/health|_next/static|_next/image|favicon.ico).*)'],
+  // '/' covers the basePath root; the lookahead entry covers all subpaths.
+  // Both are required — the lookahead alone does not match '/'.
+  matcher: ['/', '/((?!api/health|_next/static|_next/image|favicon.ico).*)'],
 };
 ```
+
+### `basePath`
+
+If your Next.js app is configured with a non-root `basePath` (e.g. `/opil`, `/lng-twin`), pass the same value as `basePath` in the middleware options. Next.js strips the basePath from `req.nextUrl.pathname` before middleware runs, so without the option the `callbackUrl` query parameter on the `/login` redirect omits the prefix and the post-login bounce 404s. Leave undefined for apps served at the root.
+
+### Matcher
+
+The recommended matcher above has two entries. `'/'` covers the basePath root (without which `https://wyella.ca/opil` itself would be unauthenticated). The negative-lookahead entry covers all other paths while excluding the health endpoint and Next.js static asset routes.
 
 | Situation | Response |
 |---|---|
