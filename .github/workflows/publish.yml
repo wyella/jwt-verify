@@ -1,10 +1,15 @@
 name: Publish @wyella/jwt-verify
 
-# Bootstrap form (DEC-914a). Swaps to OIDC / Trusted Publishing in
-# DEC-914b immediately after npmjs.com Trusted Publisher is configured
-# against this repo (wyella/jwt-verify · publish.yml).
+# OIDC form (DEC-914b). No stored secret — npm authenticates via the
+# GitHub OIDC token granted per-workflow-run, matched against the
+# Trusted Publisher configured on npmjs.com for this repo + workflow.
 #
-# Trigger: push tag v* (e.g. v0.1.0).
+# Trusted Publisher config (set by James in DEC-914b manual step):
+#   org:      wyella
+#   repo:     jwt-verify
+#   workflow: publish.yml
+#
+# Trigger: push tag v* (e.g. v0.1.1).
 
 on:
   push:
@@ -12,7 +17,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  id-token: write    # needed for `npm publish --provenance` signing
+  id-token: write    # OIDC token exchange + provenance attestation signing
   contents: read
 
 jobs:
@@ -24,11 +29,21 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-          always-auth: true
+
+      # Part 11 trap 3: OIDC publish requires npm >= 11.5.1. Node 22
+      # ships npm 10.x. Pin to npm@11 rather than @latest to avoid the
+      # self-upgrade bug that hit DEC-914a's first attempt (MODULE_NOT_FOUND
+      # promise-retry mid-reify). The pinned install is a clean replace.
+      - name: Upgrade npm to 11.x (OIDC requirement)
+        run: npm install -g npm@11
+
+      - run: npm --version
+
       - run: npm ci
       - run: npm run build
       - run: npm test
-      - name: Publish to npm (bootstrap — NPM_TOKEN)
+
+      # Trap 4: --provenance flag explicit. No NODE_AUTH_TOKEN env —
+      # Trusted Publisher + id-token:write provides auth via OIDC.
+      - name: Publish to npm (OIDC / Trusted Publishing)
         run: npm publish --access=public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
