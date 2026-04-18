@@ -1,0 +1,34 @@
+name: Publish @wyella/jwt-verify
+
+# Bootstrap form (DEC-914a). Swaps to OIDC / Trusted Publishing in
+# DEC-914b immediately after npmjs.com Trusted Publisher is configured
+# against this repo (wyella/jwt-verify · publish.yml).
+#
+# Trigger: push tag v* (e.g. v0.1.0).
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write    # needed for `npm publish --provenance` signing
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          always-auth: true
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Publish to npm (bootstrap — NPM_TOKEN)
+        run: npm publish --access=public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
