@@ -9,13 +9,16 @@ import {
   JwtVerifyError, type TokenPayload, type VerifyOptions,
   type EffectiveContext,
 } from './types';
+import { checkRevocation, isTokenRevoked, type RevocationOptions } from './revocation';
 
 export type {
   TokenPayload, VerifyOptions, MiddlewareOptions, EffectiveContext,
   VerifyErrorCode,
 } from './types';
+export type { RevocationOptions, RevocationStatus } from './revocation';
 export { JwtVerifyError } from './types';
 export { createJwtMiddleware } from './middleware';
+export { checkRevocation, isTokenRevoked } from './revocation';
 
 const HKDF_INFO = 'NextAuth.js Generated Encryption Key';
 const DEFAULT_MAX_AGE = 43200;
@@ -101,13 +104,30 @@ export function cookieReader(req: ReqLike, cookieName?: string): string | null {
 // Ports withAuth() header-override enforcement from
 // wyella/identity/lib/auth-middleware.ts, minus the DB re-resolution of
 // sysadmin cross-customer sites — consumer apps trust JWT.siteIds.
+//
+// Phase 4 (v0.2.0): if `revocation` option is set, queries the
+// identity service for per-user + global revocation state with a
+// short-TTL module-scope cache. Token is rejected if iat predates
+// either revocation timestamp.
 export async function verifyRequest(
   req: ReqLike,
-  opts: VerifyOptions & { capability?: string | null }
+  opts: VerifyOptions & {
+    capability?: string | null;
+    revocation?: RevocationOptions;
+  }
 ): Promise<{ payload: TokenPayload; effective: EffectiveContext }> {
   const token = cookieReader(req, opts.cookieName);
   if (!token) throw new JwtVerifyError('no_token', 'session cookie absent', 401);
   const payload = await verifyJwt(token, opts);
+
+  // Revocation check — Phase 4 (v0.2.0). Skipped if revocation option
+  // not provided (back-compat with v0.1.x callers).
+  if (opts.revocation) {
+    const status = await checkRevocation(payload.userId, opts.revocation);
+    if (isTokenRevoked(payload, status)) {
+      throw new JwtVerifyError('expired_token', 'token revoked (session_revocation)', 401);
+    }
+  }
 
   const customerOverride = getHeader(req.headers, 'x-wyella-customer-id');
   const siteOverride = getHeader(req.headers, 'x-wyella-site-id');

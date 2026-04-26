@@ -41,6 +41,14 @@ export interface MiddlewareOptions extends VerifyOptions {
    * is also protected — the lookahead alone does not match `/`.
    */
   basePath?: string;
+  /**
+   * Phase 4 (v0.2.0+): per-request session-revocation lookup against
+   * the identity service. If unset, env vars
+   * WYELLA_REVOCATION_ENDPOINT / WYELLA_REVOCATION_FAIL_OPEN /
+   * WYELLA_REVOCATION_CACHE_MS are consulted. If neither is provided,
+   * revocation is skipped (v0.1.x behaviour preserved).
+   */
+  revocation?: import('./revocation').RevocationOptions;
 }
 
 export interface EffectiveContext {
